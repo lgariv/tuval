@@ -2,7 +2,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
-import { getSPFServerData, applySPFServer, type SPFData } from '@/app/actions/spf-actions';
+// We don't need server actions anymore as we'll use API routes directly
+// import { getSPFServerData, applySPFServer, type SPFData } from '@/app/actions/spf-actions';
+
+export interface SPFData {
+  applicationCount: number;
+  lastAppliedAt: string | null;
+  streak: number;
+  lastStreakDate: string | null;
+}
 
 const RATE_LIMIT_MS = 5_000; // 5 seconds
 
@@ -64,11 +72,16 @@ export function useSPFData(): UseSPFDataReturn {
 
   // Load initial data on mount
   useEffect(() => {
-    getSPFServerData()
-      .then((serverData) => {
+    fetch('/api/spf')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      })
+      .then((serverData: SPFData) => {
         setData(serverData);
         setTimeAgo(formatTimeAgo(serverData.lastAppliedAt));
       })
+      .catch((err) => console.error('Error loading SPF data:', err))
       .finally(() => {
         setIsLoading(false);
       });
@@ -96,9 +109,15 @@ export function useSPFData(): UseSPFDataReturn {
     setCooldownSeconds(Math.ceil(RATE_LIMIT_MS / 1000));
 
     startTransition(async () => {
-      const newData = await applySPFServer();
-      setData(newData);
-      setTimeAgo(formatTimeAgo(newData.lastAppliedAt));
+      try {
+        const res = await fetch('/api/spf', { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to apply SPF');
+        const newData: SPFData = await res.json();
+        setData(newData);
+        setTimeAgo(formatTimeAgo(newData.lastAppliedAt));
+      } catch (err) {
+        console.error('Error applying SPF:', err);
+      }
     });
   }, []);
 
