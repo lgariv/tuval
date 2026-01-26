@@ -6,14 +6,37 @@ import { BottomNavigation } from '@/components/home/bottom-navigation';
 import { DecorativeBackground } from '@/components/home/decorative-background';
 import { HistoryCard } from '@/components/history/history-card';
 import { useSPFData } from '@/hooks/use-spf-data';
-import { Calendar } from 'lucide-react';
+import { useInfiniteHistory } from '@/hooks/use-infinite-history';
+import { useEffect, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function HistoryPage() {
-    const { data, isLoading } = useSPFData();
+    const { data, isLoading: isSpfLoading } = useSPFData();
+    const {
+        history,
+        isLoading: isHistoryLoading,
+        hasMore,
+        loadMore
+    } = useInfiniteHistory(10);
 
-    // Mock data for the fallback/initial view or if history is empty
-    // In a real app, this would come from the API
-    const history = (data as any).history || [];
+    const observerTarget = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && hasMore && !isHistoryLoading) {
+                    loadMore();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
+
+        return () => observer.disconnect();
+    }, [hasMore, isHistoryLoading, loadMore]);
 
     const getDayName = (dateStr: string) => {
         return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(new Date(dateStr)).toUpperCase();
@@ -34,7 +57,7 @@ export default function HistoryPage() {
             {/* Main content */}
             <main className="relative z-10 flex flex-1 flex-col pb-28">
                 {/* Header with avatar and streak */}
-                <Header streak={data.streak} isLoading={isLoading} />
+                <Header streak={data.streak} isLoading={isSpfLoading} />
 
                 {/* Section Title */}
                 <div className="flex items-center gap-3 px-6 py-6 pt-8">
@@ -44,23 +67,29 @@ export default function HistoryPage() {
 
                 {/* History List */}
                 <div className="flex flex-col gap-3 px-6">
-                    {isLoading ? (
-                        // Loading skeletons could go here
-                        Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="h-24 w-full animate-pulse rounded-3xl bg-white/40" />
-                        ))
-                    ) : history.length > 0 ? (
-                        history.map((entry: any, index: number) => (
+                    {history.map((entry: any) => (
+                        <div key={entry.id} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 96px' }}>
                             <HistoryCard
-                                key={entry.date}
                                 dayName={getDayName(entry.date)}
                                 date={getDateLabel(entry.date)}
                                 count={entry.count}
                             />
-                        ))
-                    ) : (
+                        </div>
+                    ))}
+
+                    {/* Observer target / Load more spinner */}
+                    <div ref={observerTarget} className="flex justify-center py-6 h-20">
+                        {isHistoryLoading && (
+                            <Loader2 className="h-6 w-6 animate-spin text-tuval-golden" />
+                        )}
+                        {!hasMore && history.length > 0 && (
+                            <p className="text-sm text-tuval-label opacity-40">No more history to show</p>
+                        )}
+                    </div>
+
+                    {!isHistoryLoading && history.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-20 text-tuval-label">
-                            <Calendar size={48} className="mb-4 opacity-20" />
+                            <span className="text-4xl mb-4 opacity-20">🗓️</span>
                             <p>No history yet. Start applying SPF!</p>
                         </div>
                     )}
