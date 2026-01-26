@@ -10,9 +10,7 @@ function calculateStreak(
     currentStreak: number,
     lastStreakDate: string
 ): number {
-    if (!lastStreakDate) {
-        return 1;
-    }
+    if (!lastStreakDate) return 1;
 
     const last = new Date(lastStreakDate);
     const now = new Date();
@@ -23,41 +21,33 @@ function calculateStreak(
     const diffMs = now.getTime() - last.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) {
-        return currentStreak;
-    } else if (diffDays === 1) {
-        return currentStreak + 1;
-    } else {
-        return 1;
-    }
+    if (diffDays === 0) return currentStreak;
+    if (diffDays === 1) return currentStreak + 1;
+    return 1;
 }
 
-async function getOrCreateSPFData() {
+/**
+ * Helper to fetch the singleton SPF record
+ */
+async function getSPFDataRecord() {
     try {
-        // Try to get the first record
-        return await pb.collection('spf_data').getFirstListItem('');
+        return await pb.collection('spf_data').getFirstListItem('', {
+            sort: 'created',
+        });
     } catch (e: unknown) {
-        if (typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 404) {
-            // Create if it doesn't exist
-            return await pb.collection('spf_data').create({
-                applicationCount: 0,
-                streak: 0,
-                lastAppliedAt: '',
-                lastStreakDate: '',
-            });
-        }
+        const is404 = typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 404;
+        if (is404) return null;
         throw e;
     }
 }
 
 /**
- * GET: Fetch aggregate SPF data and history
+ * GET: Fetch aggregate SPF data
  */
 export async function GET() {
     try {
-        const doc = await getOrCreateSPFData();
+        const doc = await getSPFDataRecord();
 
-        // Fetch last 7 days of history
         const historyDocs = await pb.collection('daily_history').getList(1, 7, {
             sort: '-date',
         });
@@ -67,11 +57,15 @@ export async function GET() {
             count: h.count,
         })).reverse();
 
+        // If no record exists, we return a successful response with 0 values
+        // BUT we indicate it's uninitialized so the hook doesn't show it as "final".
+        // Actually, if it's 0, it's 0. The hook handles the skeleton via its own isLoading state.
+
         return NextResponse.json({
-            applicationCount: doc.applicationCount,
-            lastAppliedAt: doc.lastAppliedAt || null,
-            streak: doc.streak,
-            lastStreakDate: doc.lastStreakDate || null,
+            applicationCount: doc?.applicationCount || 0,
+            lastAppliedAt: doc?.lastAppliedAt || null,
+            streak: doc?.streak || 0,
+            lastStreakDate: doc?.lastStreakDate || null,
             history,
         });
     } catch (error) {
@@ -85,49 +79,54 @@ export async function GET() {
  */
 export async function POST() {
     try {
-        const doc = await getOrCreateSPFData();
+        let doc = await getSPFDataRecord();
 
         const now = new Date().toISOString();
         const today = new Date().toISOString().split('T')[0];
 
-        // Use current values from the doc
-        const currentStreak = doc.streak || 0;
-        const lastStreakDate = doc.lastStreakDate || '';
+        if (!doc) {
+            // First time initialization
+            doc = await pb.collection('spf_data').create({
+                applicationCount: 1,
+                streak: 1,
+                lastAppliedAt: now,
+                lastStreakDate: today,
+            });
+        } else {
+            // Normal update
+            const currentStreak = doc.streak || 0;
+            const lastDate = doc.lastStreakDate || '';
+            const newStreak = calculateStreak(currentStreak, lastDate);
 
-        const newStreak = calculateStreak(currentStreak, lastStreakDate);
-
-        // Update main stats
-        const updatedDoc = await pb.collection('spf_data').update(doc.id, {
-            applicationCount: (doc.applicationCount || 0) + 1,
-            lastAppliedAt: now,
-            streak: newStreak,
-            lastStreakDate: today,
-        });
+            doc = await pb.collection('spf_data').update(doc.id, {
+                applicationCount: (doc.applicationCount || 0) + 1,
+                lastAppliedAt: now,
+                streak: newStreak,
+                lastStreakDate: today,
+            });
+        }
 
         // Update daily history
         try {
-            // Try to find today's history
             const todayHistory = await pb.collection('daily_history').getFirstListItem(`date="${today}"`);
             await pb.collection('daily_history').update(todayHistory.id, {
                 count: todayHistory.count + 1,
             });
         } catch (e: unknown) {
-            if (typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 404) {
-                // Create new history for today
+            const is404 = typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 404;
+            if (is404) {
                 await pb.collection('daily_history').create({
                     date: today,
                     count: 1,
                 });
-            } else {
-                throw e;
             }
         }
 
         return NextResponse.json({
-            applicationCount: updatedDoc.applicationCount,
-            lastAppliedAt: updatedDoc.lastAppliedAt,
-            streak: updatedDoc.streak,
-            lastStreakDate: updatedDoc.lastStreakDate,
+            applicationCount: doc.applicationCount,
+            lastAppliedAt: doc.lastAppliedAt,
+            streak: doc.streak,
+            lastStreakDate: doc.lastStreakDate,
         });
     } catch (error) {
         console.error('API Error (POST /api/spf):', error);

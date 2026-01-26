@@ -70,40 +70,40 @@ export function useSPFData(): UseSPFDataReturn {
 
   // Initial Data Load & Realtime Subscription
   useEffect(() => {
-    // 1. Fetch initial data via API (which hits PB)
+    // 1. Fetch initial data via API
     fetch('/api/spf')
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch');
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
       .then((serverData: SPFData) => {
         setData(serverData);
         setTimeAgo(formatTimeAgo(serverData.lastAppliedAt));
+        setIsLoading(false);
       })
-      .catch((err) => console.error('Error loading SPF data:', err))
-      .finally(() => {
+      .catch((err) => {
+        console.error('SPF Hook: Error loading data:', err);
         setIsLoading(false);
       });
 
     // 2. Subscribe to realtime updates
-    // Subscribe to all events ('*') on 'spf_data' collection
     pb.collection('spf_data').subscribe('*', function (e) {
       if (e.action === 'update' || e.action === 'create') {
         const record = e.record;
 
-        const newData: SPFData = {
+        const updatedData: SPFData = {
           applicationCount: record.applicationCount,
           lastAppliedAt: record.lastAppliedAt,
           streak: record.streak,
           lastStreakDate: record.lastStreakDate,
         };
 
-        setData(newData);
-        setTimeAgo(formatTimeAgo(newData.lastAppliedAt));
+        setData(updatedData);
+        setTimeAgo(formatTimeAgo(updatedData.lastAppliedAt));
+        setIsLoading(false); // Ensure loading is off if we missed the initial fetch
       }
-    }).catch(err => console.error("Realtime subscription error:", err));
+    }).catch(err => console.error("SPF Hook: Realtime subscription error:", err));
 
-    // Cleanup subscription
     return () => {
       pb.collection('spf_data').unsubscribe('*');
     };
@@ -111,13 +111,12 @@ export function useSPFData(): UseSPFDataReturn {
 
   // Update time ago every minute
   useEffect(() => {
-    // Update interval
-    const interval = setInterval(() => {
+    const updateTime = () => {
       setTimeAgo(formatTimeAgo(data.lastAppliedAt));
-    }, 60_000);
+    };
 
-    // Immediate update when data changes
-    setTimeAgo(formatTimeAgo(data.lastAppliedAt));
+    updateTime();
+    const interval = setInterval(updateTime, 60_000);
 
     return () => clearInterval(interval);
   }, [data.lastAppliedAt]);
@@ -136,17 +135,9 @@ export function useSPFData(): UseSPFDataReturn {
 
     startTransition(async () => {
       try {
-        // We still use the Next.js API route for the WRITE operation
-        // to maintain server-side control logic (history, etc)
         const res = await fetch('/api/spf', { method: 'POST' });
         if (!res.ok) throw new Error('Failed to apply SPF');
-
-        // We don't necessarily update state here because the 
-        // Realtime Subscription above will catch the change and update it!
-        // But for perceived responsiveness, we can update if we want.
-        // Let's let the subscription handle it to prove real-time works, 
-        // or just update it as a fallback.
-
+        // State updates via Realtime Subscription
       } catch (err) {
         console.error('Error applying SPF:', err);
       }
@@ -164,5 +155,12 @@ export function useSPFData(): UseSPFDataReturn {
     return () => clearTimeout(timer);
   }, [cooldownSeconds]);
 
-  return { data, timeAgo, isPending, isLoading, cooldownSeconds, handleApplySPF };
+  return {
+    data,
+    timeAgo,
+    isPending,
+    isLoading,
+    cooldownSeconds,
+    handleApplySPF
+  };
 }
