@@ -2,13 +2,15 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProtectionDisplayProps {
   count: number;
+  isLoading?: boolean;
   className?: string;
 }
 
-export function ProtectionDisplay({ count, className }: ProtectionDisplayProps) {
+export function ProtectionDisplay({ count, isLoading, className }: ProtectionDisplayProps) {
   return (
     <div
       className={cn(
@@ -35,20 +37,26 @@ export function ProtectionDisplay({ count, className }: ProtectionDisplayProps) 
         role="status"
         aria-live="polite"
       >
-        <span
-          className="tabular-nums text-[140px] font-bold leading-none text-tuval-navy"
-          style={{ fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}
-          aria-label={`${count} applications`}
-        >
-          {count}
-        </span>
-        {/* Superscript "x" */}
-        <span
-          className="absolute -right-7 top-6 text-4xl font-medium text-tuval-label"
-          aria-hidden="true"
-        >
-          x
-        </span>
+        {isLoading ? (
+          <Skeleton className="h-[140px] w-[120px] rounded-xl" />
+        ) : (
+          <>
+            <span
+              className="tabular-nums text-[140px] font-bold leading-none text-tuval-navy"
+              style={{ fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}
+              aria-label={`${count} applications`}
+            >
+              {count}
+            </span>
+            {/* Superscript "x" */}
+            <span
+              className="absolute -right-7 top-6 text-4xl font-medium text-tuval-label"
+              aria-hidden="true"
+            >
+              x
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

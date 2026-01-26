@@ -16,11 +16,11 @@ interface GlobalMongoose {
     promise: Promise<typeof mongoose> | null;
 }
 
-// @ts-ignore
+// @ts-expect-error: mongoose is not defined on global
 let cached: GlobalMongoose = global.mongoose;
 
 if (!cached) {
-    // @ts-ignore
+    // @ts-expect-error: mongoose is not defined on global
     cached = global.mongoose = { conn: null, promise: null };
 }
 

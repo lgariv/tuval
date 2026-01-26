@@ -11,6 +11,7 @@ interface UseSPFDataReturn {
   data: SPFData;
   timeAgo: string;
   isPending: boolean;
+  isLoading: boolean;
   cooldownSeconds: number;
   handleApplySPF: () => void;
 }
@@ -55,23 +56,26 @@ export function useSPFData(): UseSPFDataReturn {
     lastStreakDate: null,
   });
 
-  const [timeAgo, setTimeAgo] = useState<string>('Never');
+  const [timeAgo, setTimeAgo] = useState<string>(() => formatTimeAgo(data.lastAppliedAt));
   const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const lastClickRef = useRef<number>(0);
 
   // Load initial data on mount
   useEffect(() => {
-    getSPFServerData().then((serverData) => {
-      setData(serverData);
-      setTimeAgo(formatTimeAgo(serverData.lastAppliedAt));
-    });
+    getSPFServerData()
+      .then((serverData) => {
+        setData(serverData);
+        setTimeAgo(formatTimeAgo(serverData.lastAppliedAt));
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   // Update time ago every minute
   useEffect(() => {
-    setTimeAgo(formatTimeAgo(data.lastAppliedAt));
-
     const interval = setInterval(() => {
       setTimeAgo(formatTimeAgo(data.lastAppliedAt));
     }, 60_000);
@@ -109,5 +113,5 @@ export function useSPFData(): UseSPFDataReturn {
     return () => clearTimeout(timer);
   }, [cooldownSeconds]);
 
-  return { data, timeAgo, isPending, cooldownSeconds, handleApplySPF };
+  return { data, timeAgo, isPending, isLoading, cooldownSeconds, handleApplySPF };
 }

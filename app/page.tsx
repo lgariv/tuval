@@ -10,7 +10,7 @@ import { DecorativeBackground } from '@/components/home/decorative-background';
 import { useSPFData } from '@/hooks/use-spf-data';
 
 export default function HomePage() {
-  const { data, timeAgo, isPending, cooldownSeconds, handleApplySPF } = useSPFData();
+  const { data, timeAgo, isPending, isLoading, cooldownSeconds, handleApplySPF } = useSPFData();
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-tuval-gradient">
@@ -20,11 +20,11 @@ export default function HomePage() {
       {/* Main content */}
       <main className="relative z-10 flex flex-1 flex-col pb-28">
         {/* Header with avatar and streak */}
-        <Header streak={data.streak || 3} />
+        <Header streak={data.streak} isLoading={isLoading} />
 
         {/* Protection count display - centered */}
         <div className="flex flex-1 items-center justify-center">
-          <ProtectionDisplay count={data.applicationCount || 0} />
+          <ProtectionDisplay count={data.applicationCount} isLoading={isLoading} />
         </div>
 
         {/* Action area */}
@@ -34,7 +34,7 @@ export default function HomePage() {
             isPending={isPending}
             cooldownSeconds={cooldownSeconds}
           />
-          <LastApplied timeAgo={timeAgo || '2 hours ago'} />
+          <LastApplied timeAgo={timeAgo} isLoading={isLoading} />
         </div>
       </main>
 

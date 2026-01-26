@@ -2,6 +2,7 @@
 
 import connectToDatabase from '@/lib/db';
 import { getSPFDocument } from '@/lib/models/spf-model';
+import DailyHistoryModel from '@/lib/models/daily-history-model';
 import { revalidatePath } from 'next/cache';
 
 export interface SPFData {
@@ -9,6 +10,11 @@ export interface SPFData {
     lastAppliedAt: string | null;
     streak: number;
     lastStreakDate: string | null;
+}
+
+export interface DailyHistory {
+    date: string;
+    count: number;
 }
 
 /**
@@ -24,6 +30,22 @@ export async function getSPFServerData(): Promise<SPFData> {
         streak: doc.streak,
         lastStreakDate: doc.lastStreakDate,
     };
+}
+
+/**
+ * Get daily history from the database
+ */
+export async function getHistoryServer(limit: number = 7): Promise<DailyHistory[]> {
+    await connectToDatabase();
+    const history = await DailyHistoryModel.find()
+        .sort({ date: -1 })
+        .limit(limit)
+        .lean();
+
+    return history.map(h => ({
+        date: h.date,
+        count: h.count
+    })).reverse();
 }
 
 /**
@@ -74,6 +96,13 @@ export async function applySPFServer(): Promise<SPFData> {
     doc.lastStreakDate = today;
 
     await doc.save();
+
+    // Update daily history
+    await DailyHistoryModel.findOneAndUpdate(
+        { date: today },
+        { $inc: { count: 1 } },
+        { upsert: true, new: true }
+    );
 
     // Revalidate any paths that might show this data if using server components
     revalidatePath('/');
