@@ -39,7 +39,7 @@ export default function HomePage() {
       </main>
 
       {/* Bottom navigation */}
-      <BottomNavigation activeTab="home" />
+      <BottomNavigation />
     </div>
   );
 }
