@@ -122,6 +122,10 @@ export async function POST() {
             }
         }
 
+        if (!doc) {
+            throw new Error('Failed to create or update SPF data');
+        }
+
         return NextResponse.json({
             applicationCount: doc.applicationCount,
             lastAppliedAt: doc.lastAppliedAt,
