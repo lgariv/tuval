@@ -66,7 +66,20 @@ export function useSPFData(): UseSPFDataReturn {
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const lastClickRef = useRef<number>(0);
+
+  /**
+   * Helper to recalculate remaining cooldown from the current data
+   */
+  const updateCooldownFromData = useCallback((lastApplied: string | null) => {
+    if (!lastApplied) return 0;
+    const last = new Date(lastApplied).getTime();
+    const now = Date.now();
+    const elapsed = now - last;
+    const remaining = Math.ceil((RATE_LIMIT_MS - elapsed) / 1000);
+    const value = remaining > 0 ? remaining : 0;
+    setCooldownSeconds(value);
+    return value;
+  }, []);
 
   // Initial Data Load & Realtime Subscription
   useEffect(() => {
@@ -79,6 +92,7 @@ export function useSPFData(): UseSPFDataReturn {
       .then((serverData: SPFData) => {
         setData(serverData);
         setTimeAgo(formatTimeAgo(serverData.lastAppliedAt));
+        updateCooldownFromData(serverData.lastAppliedAt);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -87,6 +101,7 @@ export function useSPFData(): UseSPFDataReturn {
       });
 
     // 2. Subscribe to realtime updates
+    // PocketBase real-time ensures that if User A clicks, User B gets the new 'lastAppliedAt'
     pb.collection('spf_data').subscribe('*', function (e) {
       if (e.action === 'update' || e.action === 'create') {
         const record = e.record;
@@ -99,60 +114,56 @@ export function useSPFData(): UseSPFDataReturn {
         };
 
         setData(updatedData);
+        // This line is key: it triggers the local cooldown logic for ALL clients
+        updateCooldownFromData(updatedData.lastAppliedAt);
         setTimeAgo(formatTimeAgo(updatedData.lastAppliedAt));
-        setIsLoading(false); // Ensure loading is off if we missed the initial fetch
+        setIsLoading(false);
       }
     }).catch(err => console.error("SPF Hook: Realtime subscription error:", err));
 
     return () => {
       pb.collection('spf_data').unsubscribe('*');
     };
-  }, []);
+  }, [updateCooldownFromData]);
 
-  // Update time ago every minute
+  // Update relative time ("2 mins ago") periodically
   useEffect(() => {
-    const updateTime = () => {
-      setTimeAgo(formatTimeAgo(data.lastAppliedAt));
-    };
-
+    const updateTime = () => setTimeAgo(formatTimeAgo(data.lastAppliedAt));
     updateTime();
     const interval = setInterval(updateTime, 60_000);
-
     return () => clearInterval(interval);
   }, [data.lastAppliedAt]);
 
+  // Cooldown ticking logic: ensures the UI counts down smoothly
+  // This runs for all clients whenever a cooldown is active
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      // Re-calculate based on timestamp to prevent drift across devices
+      const remaining = updateCooldownFromData(data.lastAppliedAt);
+      if (remaining <= 0) {
+        clearInterval(timer);
+      }
+    }, 500); // 500ms for extra precision
+
+    return () => clearInterval(timer);
+  }, [cooldownSeconds, data.lastAppliedAt, updateCooldownFromData]);
+
   const handleApplySPF = useCallback(() => {
-    const now = Date.now();
-    const elapsed = now - lastClickRef.current;
-
-    // Rate limit check
-    if (elapsed < RATE_LIMIT_MS) {
-      return;
-    }
-
-    lastClickRef.current = now;
-    setCooldownSeconds(Math.ceil(RATE_LIMIT_MS / 1000));
+    // Shared rate limit check
+    if (cooldownSeconds > 0) return;
 
     startTransition(async () => {
       try {
         const res = await fetch('/api/spf', { method: 'POST' });
         if (!res.ok) throw new Error('Failed to apply SPF');
-        // State updates via Realtime Subscription
+        // We rely on the SSE subscription to update local state/cooldown
+        // but we can also optimistically set it here if desired.
       } catch (err) {
         console.error('Error applying SPF:', err);
       }
     });
-  }, []);
-
-  // Cooldown timer
-  useEffect(() => {
-    if (cooldownSeconds <= 0) return;
-
-    const timer = setTimeout(() => {
-      setCooldownSeconds((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearTimeout(timer);
   }, [cooldownSeconds]);
 
   return {

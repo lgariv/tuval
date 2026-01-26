@@ -57,10 +57,6 @@ export async function GET() {
             count: h.count,
         })).reverse();
 
-        // If no record exists, we return a successful response with 0 values
-        // BUT we indicate it's uninitialized so the hook doesn't show it as "final".
-        // Actually, if it's 0, it's 0. The hook handles the skeleton via its own isLoading state.
-
         return NextResponse.json({
             applicationCount: doc?.applicationCount || 0,
             lastAppliedAt: doc?.lastAppliedAt || null,
