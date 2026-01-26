@@ -96,27 +96,34 @@ export function DecorativeBackground() {
       className="pointer-events-none absolute inset-0 overflow-hidden"
       aria-hidden="true"
     >
-      {/* Sun - top right */}
-      <div className="absolute right-4 top-24">
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-15px) rotate(3deg); }
+        }
+      `}</style>
+
+      {/* Sun - top right area, below badge level */}
+      <div className="absolute right-[12%] top-32" style={{ animation: 'float 7s ease-in-out infinite' }}>
         <SunIcon />
       </div>
 
-      {/* Star - top left */}
-      <div className="absolute left-8 top-[180px]">
+      {/* Star - top left area, below profile level */}
+      <div className="absolute left-[20%] top-44" style={{ animation: 'float 5s ease-in-out infinite 1s' }}>
         <StarIcon />
       </div>
 
-      {/* Water droplet - right side, same level as button */}
-      <div className="absolute bottom-[168px] right-4">
+      {/* Water droplet - right side, flanking the count */}
+      <div className="absolute right-[18%] top-[50%]" style={{ animation: 'float 8s ease-in-out infinite 0.5s' }}>
         <Droplet
-          size={18}
-          className="text-sky-400"
+          size={32}
+          className="text-sky-300 opacity-60"
           fill="currentColor"
         />
       </div>
 
-      {/* Sunscreen bottle - left side, above button */}
-      <div className="absolute bottom-[200px] left-3">
+      {/* Sunscreen bottle - left side, flanking the count */}
+      <div className="absolute left-[15%] top-[55%]" style={{ animation: 'float 6s ease-in-out infinite 1.5s' }}>
         <SunscreenBottle />
       </div>
     </div>
