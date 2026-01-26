@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* pnpm* ./
-RUN pnpm i
+RUN npm i
 
 # Rebuild the source code only when needed
 FROM node:22-slim AS builder
@@ -15,7 +15,7 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
 
-RUN pnpm run build
+RUN npm run build
 
 # pull official base image
 FROM node:22-slim AS runner
