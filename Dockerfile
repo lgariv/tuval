@@ -4,13 +4,14 @@ FROM node:22-slim AS deps
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* pnpm* ./
+COPY package.json package-lock.json* ./
 RUN npm i
 
 # Rebuild the source code only when needed
 FROM node:22-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps package.json package-lock.json* ./
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
