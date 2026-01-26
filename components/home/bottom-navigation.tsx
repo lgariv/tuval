@@ -3,24 +3,34 @@
 
 import { Calendar, Home, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 type Tab = 'history' | 'home' | 'settings';
 
 interface BottomNavigationProps {
-  activeTab: Tab;
-  onTabChange?: (tab: Tab) => void;
+  activeTab?: Tab; // Now optional as we can derive it from pathname
 }
 
 const tabs = [
-  { id: 'history' as const, label: 'History', icon: Calendar },
-  { id: 'home' as const, label: 'Home', icon: Home },
-  { id: 'settings' as const, label: 'Settings', icon: Settings },
+  { id: 'history' as const, label: 'History', icon: Calendar, href: '/history' },
+  { id: 'home' as const, label: 'Home', icon: Home, href: '/' },
+  { id: 'settings' as const, label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
 export function BottomNavigation({
-  activeTab,
-  onTabChange,
+  activeTab: manualActiveTab,
 }: BottomNavigationProps) {
+  const pathname = usePathname();
+
+  // Determine active tab from pathname if not manually provided
+  const activeTab = manualActiveTab || (
+    pathname === '/' ? 'home' :
+      pathname.startsWith('/history') ? 'history' :
+        pathname.startsWith('/settings') ? 'settings' :
+          'home'
+  );
+
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-50 bg-[#f5f8fa]"
@@ -32,9 +42,9 @@ export function BottomNavigation({
           const isActive = activeTab === tab.id;
 
           return (
-            <button
+            <Link
               key={tab.id}
-              onClick={() => onTabChange?.(tab.id)}
+              href={tab.href}
               className={cn(
                 'flex flex-col items-center gap-1 rounded-2xl px-8 py-2',
                 'touch-manipulation',
@@ -64,7 +74,7 @@ export function BottomNavigation({
               >
                 {tab.label}
               </span>
-            </button>
+            </Link>
           );
         })}
       </div>
