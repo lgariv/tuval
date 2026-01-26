@@ -11,7 +11,8 @@ RUN npm i
 FROM node:22-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps package.json package-lock.json ./
+COPY --from=deps /app/package.json ./
+COPY --from=deps /app/package-lock.json ./
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
@@ -29,7 +30,7 @@ ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
 COPY --from=builder /app/package.json .
-COPY --from=builder package.json package-lock.json ./
+COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
