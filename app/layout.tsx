@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tuval",
-  description: "Tuval - Authentication powered by Clerk",
+  title: "T.U.V.A.L",
+  description: "Total UV-protection Applied Layers",
 };
 
 export default function RootLayout({
