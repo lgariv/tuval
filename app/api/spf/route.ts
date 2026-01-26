@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/db';
-import { getSPFDocument } from '@/lib/models/spf-model';
-import DailyHistoryModel from '@/lib/models/daily-history-model';
+import { NextResponse } from 'next/server';
+import { pb } from '@/lib/pocketbase';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * Calculate streak based on last application date
  */
 function calculateStreak(
     currentStreak: number,
-    lastStreakDate: string | null
+    lastStreakDate: string
 ): number {
     if (!lastStreakDate) {
         return 1;
@@ -32,30 +32,46 @@ function calculateStreak(
     }
 }
 
+async function getOrCreateSPFData() {
+    try {
+        // Try to get the first record
+        return await pb.collection('spf_data').getFirstListItem('');
+    } catch (e: unknown) {
+        if (typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 404) {
+            // Create if it doesn't exist
+            return await pb.collection('spf_data').create({
+                applicationCount: 0,
+                streak: 0,
+                lastAppliedAt: '',
+                lastStreakDate: '',
+            });
+        }
+        throw e;
+    }
+}
+
 /**
  * GET: Fetch aggregate SPF data and history
  */
 export async function GET() {
     try {
-        await connectToDatabase();
-        const doc = await getSPFDocument();
+        const doc = await getOrCreateSPFData();
 
         // Fetch last 7 days of history
-        const historyDocs = await DailyHistoryModel.find()
-            .sort({ date: -1 })
-            .limit(7)
-            .lean();
+        const historyDocs = await pb.collection('daily_history').getList(1, 7, {
+            sort: '-date',
+        });
 
-        const history = historyDocs.map(h => ({
+        const history = historyDocs.items.map((h) => ({
             date: h.date,
-            count: h.count
+            count: h.count,
         })).reverse();
 
         return NextResponse.json({
             applicationCount: doc.applicationCount,
-            lastAppliedAt: doc.lastAppliedAt,
+            lastAppliedAt: doc.lastAppliedAt || null,
             streak: doc.streak,
-            lastStreakDate: doc.lastStreakDate,
+            lastStreakDate: doc.lastStreakDate || null,
             history,
         });
     } catch (error) {
@@ -69,33 +85,49 @@ export async function GET() {
  */
 export async function POST() {
     try {
-        await connectToDatabase();
-        const doc = await getSPFDocument();
+        const doc = await getOrCreateSPFData();
 
         const now = new Date().toISOString();
         const today = new Date().toISOString().split('T')[0];
 
-        const newStreak = calculateStreak(doc.streak, doc.lastStreakDate);
+        // Use current values from the doc
+        const currentStreak = doc.streak || 0;
+        const lastStreakDate = doc.lastStreakDate || '';
 
-        doc.applicationCount += 1;
-        doc.lastAppliedAt = now;
-        doc.streak = newStreak;
-        doc.lastStreakDate = today;
+        const newStreak = calculateStreak(currentStreak, lastStreakDate);
 
-        await doc.save();
+        // Update main stats
+        const updatedDoc = await pb.collection('spf_data').update(doc.id, {
+            applicationCount: (doc.applicationCount || 0) + 1,
+            lastAppliedAt: now,
+            streak: newStreak,
+            lastStreakDate: today,
+        });
 
         // Update daily history
-        await DailyHistoryModel.findOneAndUpdate(
-            { date: today },
-            { $inc: { count: 1 } },
-            { upsert: true, new: true }
-        );
+        try {
+            // Try to find today's history
+            const todayHistory = await pb.collection('daily_history').getFirstListItem(`date="${today}"`);
+            await pb.collection('daily_history').update(todayHistory.id, {
+                count: todayHistory.count + 1,
+            });
+        } catch (e: unknown) {
+            if (typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 404) {
+                // Create new history for today
+                await pb.collection('daily_history').create({
+                    date: today,
+                    count: 1,
+                });
+            } else {
+                throw e;
+            }
+        }
 
         return NextResponse.json({
-            applicationCount: doc.applicationCount,
-            lastAppliedAt: doc.lastAppliedAt,
-            streak: doc.streak,
-            lastStreakDate: doc.lastStreakDate,
+            applicationCount: updatedDoc.applicationCount,
+            lastAppliedAt: updatedDoc.lastAppliedAt,
+            streak: updatedDoc.streak,
+            lastStreakDate: updatedDoc.lastStreakDate,
         });
     } catch (error) {
         console.error('API Error (POST /api/spf):', error);

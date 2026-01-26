@@ -2,8 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
-// We don't need server actions anymore as we'll use API routes directly
-// import { getSPFServerData, applySPFServer, type SPFData } from '@/app/actions/spf-actions';
+import { pb } from '@/lib/pocketbase';
 
 export interface SPFData {
   applicationCount: number;
@@ -13,7 +12,6 @@ export interface SPFData {
 }
 
 const RATE_LIMIT_MS = 5_000; // 5 seconds
-
 
 interface UseSPFDataReturn {
   data: SPFData;
@@ -64,14 +62,15 @@ export function useSPFData(): UseSPFDataReturn {
     lastStreakDate: null,
   });
 
-  const [timeAgo, setTimeAgo] = useState<string>(() => formatTimeAgo(data.lastAppliedAt));
+  const [timeAgo, setTimeAgo] = useState<string>('Never');
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const lastClickRef = useRef<number>(0);
 
-  // Load initial data on mount
+  // Initial Data Load & Realtime Subscription
   useEffect(() => {
+    // 1. Fetch initial data via API (which hits PB)
     fetch('/api/spf')
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch');
@@ -85,13 +84,40 @@ export function useSPFData(): UseSPFDataReturn {
       .finally(() => {
         setIsLoading(false);
       });
+
+    // 2. Subscribe to realtime updates
+    // Subscribe to all events ('*') on 'spf_data' collection
+    pb.collection('spf_data').subscribe('*', function (e) {
+      if (e.action === 'update' || e.action === 'create') {
+        const record = e.record;
+
+        const newData: SPFData = {
+          applicationCount: record.applicationCount,
+          lastAppliedAt: record.lastAppliedAt,
+          streak: record.streak,
+          lastStreakDate: record.lastStreakDate,
+        };
+
+        setData(newData);
+        setTimeAgo(formatTimeAgo(newData.lastAppliedAt));
+      }
+    }).catch(err => console.error("Realtime subscription error:", err));
+
+    // Cleanup subscription
+    return () => {
+      pb.collection('spf_data').unsubscribe('*');
+    };
   }, []);
 
   // Update time ago every minute
   useEffect(() => {
+    // Update interval
     const interval = setInterval(() => {
       setTimeAgo(formatTimeAgo(data.lastAppliedAt));
     }, 60_000);
+
+    // Immediate update when data changes
+    setTimeAgo(formatTimeAgo(data.lastAppliedAt));
 
     return () => clearInterval(interval);
   }, [data.lastAppliedAt]);
@@ -110,11 +136,17 @@ export function useSPFData(): UseSPFDataReturn {
 
     startTransition(async () => {
       try {
+        // We still use the Next.js API route for the WRITE operation
+        // to maintain server-side control logic (history, etc)
         const res = await fetch('/api/spf', { method: 'POST' });
         if (!res.ok) throw new Error('Failed to apply SPF');
-        const newData: SPFData = await res.json();
-        setData(newData);
-        setTimeAgo(formatTimeAgo(newData.lastAppliedAt));
+
+        // We don't necessarily update state here because the 
+        // Realtime Subscription above will catch the change and update it!
+        // But for perceived responsiveness, we can update if we want.
+        // Let's let the subscription handle it to prove real-time works, 
+        // or just update it as a fallback.
+
       } catch (err) {
         console.error('Error applying SPF:', err);
       }
