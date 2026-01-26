@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { pb } from '@/lib/pocketbase';
+import { auth } from '@clerk/nextjs/server';
+import { getAdminPB, pb } from '@/lib/pocketbase';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,7 @@ function calculateStreak(
 
 /**
  * Helper to fetch the singleton SPF record
+ * (Note: Public pb client can still READ if rules allowed)
  */
 async function getSPFDataRecord() {
     try {
@@ -75,26 +77,35 @@ export async function GET() {
  */
 export async function POST() {
     try {
+        // 1. CLERK AUTH CHECK: Ensure only logged in users can write
+        const { userId } = await auth();
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // 2. ADMIN DB PROXY: Get authenticated admin client
+        const adminPb = await getAdminPB();
+
         let doc = await getSPFDataRecord();
 
         const now = new Date().toISOString();
         const today = new Date().toISOString().split('T')[0];
 
         if (!doc) {
-            // First time initialization
-            doc = await pb.collection('spf_data').create({
+            // First time initialization (Requires admin)
+            doc = await adminPb.collection('spf_data').create({
                 applicationCount: 1,
                 streak: 1,
                 lastAppliedAt: now,
                 lastStreakDate: today,
             });
         } else {
-            // Normal update
+            // Normal update (Requires admin)
             const currentStreak = doc.streak || 0;
             const lastDate = doc.lastStreakDate || '';
             const newStreak = calculateStreak(currentStreak, lastDate);
 
-            doc = await pb.collection('spf_data').update(doc.id, {
+            doc = await adminPb.collection('spf_data').update(doc.id, {
                 applicationCount: (doc.applicationCount || 0) + 1,
                 lastAppliedAt: now,
                 streak: newStreak,
@@ -104,14 +115,14 @@ export async function POST() {
 
         // Update daily history
         try {
-            const todayHistory = await pb.collection('daily_history').getFirstListItem(`date="${today}"`);
-            await pb.collection('daily_history').update(todayHistory.id, {
+            const todayHistory = await adminPb.collection('daily_history').getFirstListItem(`date="${today}"`);
+            await adminPb.collection('daily_history').update(todayHistory.id, {
                 count: todayHistory.count + 1,
             });
         } catch (e: unknown) {
             const is404 = typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 404;
             if (is404) {
-                await pb.collection('daily_history').create({
+                await adminPb.collection('daily_history').create({
                     date: today,
                     count: 1,
                 });
