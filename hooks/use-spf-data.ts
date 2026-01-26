@@ -2,14 +2,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
-import {
-  getSPFData,
-  applySPF as applySPFStorage,
-  formatTimeAgo,
-  type SPFData,
-} from '@/lib/spf-storage';
+import { getSPFServerData, applySPFServer, type SPFData } from '@/app/actions/spf-actions';
 
 const RATE_LIMIT_MS = 5_000; // 5 seconds
+
 
 interface UseSPFDataReturn {
   data: SPFData;
@@ -17,6 +13,38 @@ interface UseSPFDataReturn {
   isPending: boolean;
   cooldownSeconds: number;
   handleApplySPF: () => void;
+}
+
+/**
+ * Format timestamp as relative time
+ */
+function formatTimeAgo(isoString: string | null): string {
+  if (!isoString) {
+    return 'Never';
+  }
+
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+
+  if (diffMs < 0) {
+    return 'Just now';
+  }
+
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffSeconds < 60) {
+    return 'Just now';
+  } else if (diffMinutes < 60) {
+    return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  } else {
+    return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  }
 }
 
 export function useSPFData(): UseSPFDataReturn {
@@ -34,9 +62,10 @@ export function useSPFData(): UseSPFDataReturn {
 
   // Load initial data on mount
   useEffect(() => {
-    const stored = getSPFData();
-    setData(stored);
-    setTimeAgo(formatTimeAgo(stored.lastAppliedAt));
+    getSPFServerData().then((serverData) => {
+      setData(serverData);
+      setTimeAgo(formatTimeAgo(serverData.lastAppliedAt));
+    });
   }, []);
 
   // Update time ago every minute
@@ -50,24 +79,6 @@ export function useSPFData(): UseSPFDataReturn {
     return () => clearInterval(interval);
   }, [data.lastAppliedAt]);
 
-  // Cross-tab sync
-  useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'tuval:spf-data:v1' && e.newValue) {
-        try {
-          const newData = JSON.parse(e.newValue) as SPFData;
-          setData(newData);
-          setTimeAgo(formatTimeAgo(newData.lastAppliedAt));
-        } catch {
-          // Ignore
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
   const handleApplySPF = useCallback(() => {
     const now = Date.now();
     const elapsed = now - lastClickRef.current;
@@ -80,8 +91,8 @@ export function useSPFData(): UseSPFDataReturn {
     lastClickRef.current = now;
     setCooldownSeconds(Math.ceil(RATE_LIMIT_MS / 1000));
 
-    startTransition(() => {
-      const newData = applySPFStorage();
+    startTransition(async () => {
+      const newData = await applySPFServer();
       setData(newData);
       setTimeAgo(formatTimeAgo(newData.lastAppliedAt));
     });
