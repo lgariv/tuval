@@ -97,8 +97,10 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const [language, setLanguage] = useState<Language>('en');
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         const saved = localStorage.getItem('tuval_lang') as Language;
         if (saved && (saved === 'en' || saved === 'he')) {
             setLanguage(saved);
@@ -119,7 +121,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
     return (
         <LanguageContext.Provider value={{ language, direction, toggleLanguage, t }}>
-            <div dir={direction} className={language === 'he' ? 'font-hebrew' : ''}>
+            <div
+                dir={mounted ? direction : 'ltr'}
+                className={mounted && language === 'he' ? 'font-hebrew' : ''}
+            >
                 {children}
             </div>
         </LanguageContext.Provider>
