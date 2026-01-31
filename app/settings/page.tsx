@@ -5,6 +5,7 @@ import { BottomNavigation } from '@/components/home/bottom-navigation';
 import { DecorativeBackground } from '@/components/home/decorative-background';
 import { useSPFData } from '@/hooks/use-spf-data';
 import { ViewCountCard } from '@/components/settings/view-count-card';
+import { ShareQRCodeCard } from '@/components/settings/share-qr-card';
 
 export default function SettingsPage() {
     const { data, isLoading } = useSPFData();
@@ -28,6 +29,7 @@ export default function SettingsPage() {
                 {/* Settings Content */}
                 <div className="flex flex-col gap-4 px-6">
                     <ViewCountCard />
+                    <ShareQRCodeCard />
                 </div>
             </main>
 
