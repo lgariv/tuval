@@ -31,7 +31,7 @@ export function ShareQRCodeCard() {
                 </div>
                 <div className="flex flex-col">
                     <span className="text-sm font-medium text-tuval-label">Share Website</span>
-                    <span className="text-sm text-tuval-navy/60">Invite friends to track their SPF</span>
+                    <span className="text-sm text-tuval-navy/60">Invite friends to track Tuval's SPF</span>
                 </div>
             </div>
 
