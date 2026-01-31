@@ -156,6 +156,11 @@ export function useSPFData(): UseSPFDataReturn {
   }, [cooldownSeconds, data.lastAppliedAt, updateCooldownFromData]);
 
   const handleApplySPF = useCallback(() => {
+    // Immediate haptic feedback for the click
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(5);
+    }
+
     // 1. Auth check
     if (!userId) {
       openSignIn();
@@ -169,8 +174,11 @@ export function useSPFData(): UseSPFDataReturn {
       try {
         const res = await fetch('/api/spf', { method: 'POST' });
         if (!res.ok) throw new Error('Failed to apply SPF');
-        // We rely on the SSE subscription to update local state/cooldown
-        // but we can also optimistically set it here if desired.
+
+        // Haptic feedback
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(15);
+        }
       } catch (err) {
         console.error('Error applying SPF:', err);
       }
