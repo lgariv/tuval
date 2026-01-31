@@ -1,7 +1,7 @@
 // components/home/apply-spf-button.tsx
 'use client';
 
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -9,10 +9,18 @@ interface ApplySPFButtonProps {
   onClick: () => void;
   isPending: boolean;
   cooldownSeconds: number;
+  isAuthenticated: boolean;
+  isLoaded: boolean;
 }
 
-export function ApplySPFButton({ onClick, isPending, cooldownSeconds }: ApplySPFButtonProps) {
-  const isDisabled = isPending || cooldownSeconds > 0;
+export function ApplySPFButton({
+  onClick,
+  isPending,
+  cooldownSeconds,
+  isAuthenticated,
+  isLoaded
+}: ApplySPFButtonProps) {
+  const isDisabled = !isLoaded || isPending || cooldownSeconds > 0;
 
   return (
     <Button
@@ -37,14 +45,17 @@ export function ApplySPFButton({ onClick, isPending, cooldownSeconds }: ApplySPF
             : 'Apply sunscreen'
       }
     >
-      {isPending ? (
+      {!isLoaded ? (
+        <Loader2 size={24} className="animate-spin" aria-hidden="true" />
+      ) : isPending ? (
         <>
-          <Loader2
-            size={24}
-            className="mr-2 animate-spin"
-            aria-hidden="true"
-          />
+          <Loader2 size={24} className="mr-2 animate-spin" aria-hidden="true" />
           <span>Applying…</span>
+        </>
+      ) : !isAuthenticated ? (
+        <>
+          <Lock size={20} className="mr-2" aria-hidden="true" />
+          <span>LOGIN TO APPLY</span>
         </>
       ) : cooldownSeconds > 0 ? (
         <span className="tabular-nums">Wait {cooldownSeconds}s</span>

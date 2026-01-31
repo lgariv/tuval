@@ -3,7 +3,7 @@
 
 import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import { Badge } from '@/components/ui/badge';
-import { Flame } from 'lucide-react';
+import { Flame, User } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface HeaderProps {
@@ -12,8 +12,9 @@ interface HeaderProps {
 }
 
 export function Header({ streak, isLoading }: HeaderProps) {
-  const { user, isLoaded } = useUser();
-  const displayName = user?.firstName || 'Sunshine';
+  const { user, isLoaded, isSignedIn } = useUser();
+  const displayName = user?.firstName || 'Guest';
+  const greeting = isSignedIn ? 'Hello' : 'Welcome';
 
   return (
     <header className="flex w-full items-center justify-between px-5 py-4">
@@ -40,26 +41,10 @@ export function Header({ streak, isLoading }: HeaderProps) {
                 />
               </SignedIn>
 
-              {/* Fallback avatar when signed out - stylized woman */}
+              {/* Fallback avatar when signed out - neutral user icon */}
               <SignedOut>
-                <div className="h-11 w-11 overflow-hidden rounded-full border-2 border-white shadow-md">
-                  <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full">
-                    {/* Background */}
-                    <rect width="56" height="56" fill="#e8ded5" />
-                    {/* Hair background */}
-                    <ellipse cx="28" cy="24" rx="20" ry="18" fill="#2d1810" />
-                    {/* Hair sides */}
-                    <path d="M8 28 Q8 56 28 56 L8 56 Z" fill="#2d1810" />
-                    <path d="M48 28 Q48 56 28 56 L48 56 Z" fill="#2d1810" />
-                    {/* Face */}
-                    <ellipse cx="28" cy="30" rx="13" ry="14" fill="#f5d5c8" />
-                    {/* Hair bangs */}
-                    <path d="M14 22 Q20 12 28 14 Q36 12 42 22 Q38 24 28 22 Q18 24 14 22" fill="#2d1810" />
-                    {/* Neck */}
-                    <rect x="22" y="42" width="12" height="8" fill="#f5d5c8" />
-                    {/* Shirt */}
-                    <ellipse cx="28" cy="60" rx="20" ry="16" fill="#7ec8a8" />
-                  </svg>
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-tuval-label/10 text-tuval-label shadow-md">
+                  <User size={24} />
                 </div>
               </SignedOut>
             </>
@@ -69,7 +54,7 @@ export function Header({ streak, isLoading }: HeaderProps) {
         {/* Greeting text */}
         <div className="flex flex-col">
           <span className="text-xs font-medium uppercase tracking-wider text-tuval-label">
-            Hello
+            {greeting}
           </span>
           {!isLoaded || isLoading ? (
             <Skeleton className="mt-1 h-6 w-24 rounded-md" />

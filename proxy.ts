@@ -1,21 +1,28 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isPublicRoute = createRouteMatcher([
-  "/sign-in(.*)",
-  "/sign-up(.*)",
+    "/",
+    "/history(.*)",
+    "/api/spf", // We allow GET /api/spf but POST will be handled by auth check in the route or middleware
+    "/sign-in(.*)",
+    "/sign-up(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
+    // If it's a public route, don't protect it
+    if (isPublicRoute(request)) {
+        return;
+    }
+
+    // Protect all other routes
     await auth.protect();
-  }
 });
 
 export const config = {
-  matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
-    "/(api|trpc)(.*)",
-  ],
+    matcher: [
+        // Skip Next.js internals and all static files, unless found in search params
+        "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+        // Always run for API routes
+        "/(api|trpc)(.*)",
+    ],
 };

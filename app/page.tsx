@@ -10,7 +10,16 @@ import { DecorativeBackground } from '@/components/home/decorative-background';
 import { useSPFData } from '@/hooks/use-spf-data';
 
 export default function HomePage() {
-  const { data, timeAgo, isPending, isLoading, cooldownSeconds, handleApplySPF } = useSPFData();
+  const {
+    data,
+    timeAgo,
+    isPending,
+    isLoading,
+    isLoaded,
+    userId,
+    cooldownSeconds,
+    handleApplySPF
+  } = useSPFData();
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-tuval-gradient">
@@ -33,6 +42,8 @@ export default function HomePage() {
             onClick={handleApplySPF}
             isPending={isPending}
             cooldownSeconds={cooldownSeconds}
+            isLoaded={isLoaded}
+            isAuthenticated={!!userId}
           />
           <LastApplied timeAgo={timeAgo} isLoading={isLoading} />
         </div>

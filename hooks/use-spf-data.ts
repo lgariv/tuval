@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
+import { useAuth, useClerk } from '@clerk/nextjs';
 import { pb } from '@/lib/pocketbase';
 
 export interface SPFData {
@@ -18,6 +19,8 @@ interface UseSPFDataReturn {
   timeAgo: string;
   isPending: boolean;
   isLoading: boolean;
+  isLoaded: boolean;
+  userId: string | null | undefined;
   cooldownSeconds: number;
   handleApplySPF: () => void;
 }
@@ -66,6 +69,8 @@ export function useSPFData(): UseSPFDataReturn {
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const { userId, isLoaded } = useAuth();
+  const { openSignIn } = useClerk();
 
   /**
    * Helper to recalculate remaining cooldown from the current data
@@ -151,7 +156,13 @@ export function useSPFData(): UseSPFDataReturn {
   }, [cooldownSeconds, data.lastAppliedAt, updateCooldownFromData]);
 
   const handleApplySPF = useCallback(() => {
-    // Shared rate limit check
+    // 1. Auth check
+    if (!userId) {
+      openSignIn();
+      return;
+    }
+
+    // 2. Shared rate limit check
     if (cooldownSeconds > 0) return;
 
     startTransition(async () => {
@@ -164,13 +175,15 @@ export function useSPFData(): UseSPFDataReturn {
         console.error('Error applying SPF:', err);
       }
     });
-  }, [cooldownSeconds]);
+  }, [cooldownSeconds, userId, openSignIn]);
 
   return {
     data,
     timeAgo,
     isPending,
     isLoading,
+    isLoaded,
+    userId,
     cooldownSeconds,
     handleApplySPF
   };
