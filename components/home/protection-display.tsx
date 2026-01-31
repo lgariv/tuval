@@ -3,6 +3,7 @@
 
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLanguage } from '@/hooks/use-language';
 
 interface ProtectionDisplayProps {
   count: number;
@@ -11,6 +12,7 @@ interface ProtectionDisplayProps {
 }
 
 export function ProtectionDisplay({ count, isLoading, className }: ProtectionDisplayProps) {
+  const { t } = useLanguage();
   return (
     <div
       className={cn(
@@ -44,7 +46,7 @@ export function ProtectionDisplay({ count, isLoading, className }: ProtectionDis
             <span
               className="tabular-nums text-[140px] font-bold leading-none text-tuval-navy"
               style={{ fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}
-              aria-label={`${count} applications`}
+              aria-label={`${count} ${t('count_label')}`}
             >
               {count}
             </span>

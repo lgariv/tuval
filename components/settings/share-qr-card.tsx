@@ -5,10 +5,12 @@ import { Share2, Copy, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
 
 export function ShareQRCodeCard() {
     const [url, setUrl] = useState('https://tuval.dafuk.pro/');
     const [copied, setCopied] = useState(false);
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -30,8 +32,8 @@ export function ShareQRCodeCard() {
                     <Share2 size={24} />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-sm font-medium text-tuval-label">Share Website</span>
-                    <span className="text-sm text-tuval-navy/60">Invite friends to track Tuval's SPF</span>
+                    <span className="text-sm font-medium text-tuval-label">{t('share_website')}</span>
+                    <span className="text-sm text-tuval-navy/60">{t('share_invite')}</span>
                 </div>
             </div>
 

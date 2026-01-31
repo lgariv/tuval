@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { pb } from '@/lib/pocketbase';
+import { useLanguage } from '@/hooks/use-language';
 
 export interface SPFData {
   applicationCount: number;
@@ -26,34 +27,32 @@ interface UseSPFDataReturn {
 }
 
 /**
- * Format timestamp as relative time
+ * Format timestamp as relative time using Intl.RelativeTimeFormat
  */
-function formatTimeAgo(isoString: string | null): string {
+function formatTimeAgo(isoString: string | null, language: string, t: (key: string) => string): string {
   if (!isoString) {
-    return 'Never';
+    return t('never');
   }
 
   const date = new Date(isoString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
 
-  if (diffMs < 0) {
-    return 'Just now';
-  }
-
   const diffSeconds = Math.floor(diffMs / 1000);
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+  const rtf = new Intl.RelativeTimeFormat(language === 'he' ? 'he-IL' : 'en-US', { numeric: 'auto' });
+
   if (diffSeconds < 60) {
-    return 'Just now';
+    return t('just_now');
   } else if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+    return rtf.format(-diffMinutes, 'minute');
   } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    return rtf.format(-diffHours, 'hour');
   } else {
-    return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    return rtf.format(-diffDays, 'day');
   }
 }
 
@@ -71,6 +70,7 @@ export function useSPFData(): UseSPFDataReturn {
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const { userId, isLoaded } = useAuth();
   const { openSignIn } = useClerk();
+  const { language, t } = useLanguage();
 
   /**
    * Helper to recalculate remaining cooldown from the current data
@@ -96,7 +96,7 @@ export function useSPFData(): UseSPFDataReturn {
       })
       .then((serverData: SPFData) => {
         setData(serverData);
-        setTimeAgo(formatTimeAgo(serverData.lastAppliedAt));
+        setTimeAgo(formatTimeAgo(serverData.lastAppliedAt, language, t));
         updateCooldownFromData(serverData.lastAppliedAt);
         setIsLoading(false);
       })
@@ -121,7 +121,7 @@ export function useSPFData(): UseSPFDataReturn {
         setData(updatedData);
         // This line is key: it triggers the local cooldown logic for ALL clients
         updateCooldownFromData(updatedData.lastAppliedAt);
-        setTimeAgo(formatTimeAgo(updatedData.lastAppliedAt));
+        setTimeAgo(formatTimeAgo(updatedData.lastAppliedAt, language, t));
         setIsLoading(false);
       }
     }).catch(err => console.error("SPF Hook: Realtime subscription error:", err));
@@ -133,11 +133,11 @@ export function useSPFData(): UseSPFDataReturn {
 
   // Update relative time ("2 mins ago") periodically
   useEffect(() => {
-    const updateTime = () => setTimeAgo(formatTimeAgo(data.lastAppliedAt));
+    const updateTime = () => setTimeAgo(formatTimeAgo(data.lastAppliedAt, language, t));
     updateTime();
     const interval = setInterval(updateTime, 60_000);
     return () => clearInterval(interval);
-  }, [data.lastAppliedAt]);
+  }, [data.lastAppliedAt, language, t]);
 
   // Cooldown ticking logic: ensures the UI counts down smoothly
   // This runs for all clients whenever a cooldown is active

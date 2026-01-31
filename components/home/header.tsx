@@ -5,6 +5,7 @@ import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import { Badge } from '@/components/ui/badge';
 import { Flame, User } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLanguage } from '@/hooks/use-language';
 
 interface HeaderProps {
   streak: number;
@@ -13,8 +14,9 @@ interface HeaderProps {
 
 export function Header({ streak, isLoading }: HeaderProps) {
   const { user, isLoaded, isSignedIn } = useUser();
-  const displayName = user?.firstName || 'Guest';
-  const greeting = isSignedIn ? 'Hello' : 'Welcome';
+  const { t } = useLanguage();
+  const displayName = user?.firstName || t('guest');
+  const greeting = isSignedIn ? t('greeting_hello') : t('greeting_welcome');
 
   return (
     <header className="flex w-full items-center justify-between px-5 py-4">
@@ -83,7 +85,7 @@ export function Header({ streak, isLoading }: HeaderProps) {
           ) : (
             streak
           )}{' '}
-          Day Streak
+          {t('streak_day')}
         </span>
       </Badge>
     </header>

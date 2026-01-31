@@ -8,6 +8,7 @@ import { LastApplied } from '@/components/home/last-applied';
 import { BottomNavigation } from '@/components/home/bottom-navigation';
 import { DecorativeBackground } from '@/components/home/decorative-background';
 import { useSPFData } from '@/hooks/use-spf-data';
+import { useLanguage } from '@/hooks/use-language';
 
 export default function HomePage() {
   const {
@@ -20,6 +21,7 @@ export default function HomePage() {
     cooldownSeconds,
     handleApplySPF
   } = useSPFData();
+  const { t } = useLanguage();
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-tuval-gradient">

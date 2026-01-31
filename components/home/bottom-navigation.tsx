@@ -5,6 +5,7 @@ import { Calendar, Home, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useLanguage } from '@/hooks/use-language';
 
 type Tab = 'history' | 'home' | 'settings';
 
@@ -22,6 +23,13 @@ export function BottomNavigation({
   activeTab: manualActiveTab,
 }: BottomNavigationProps) {
   const pathname = usePathname();
+  const { t } = useLanguage();
+
+  const tabs = [
+    { id: 'history' as const, label: t('nav_history'), icon: Calendar, href: '/history' },
+    { id: 'home' as const, label: t('nav_home'), icon: Home, href: '/' },
+    { id: 'settings' as const, label: t('nav_settings'), icon: Settings, href: '/settings' },
+  ];
 
   // Determine active tab from pathname if not manually provided
   const activeTab = manualActiveTab || (

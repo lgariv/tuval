@@ -4,6 +4,7 @@
 import { Plus, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface ApplySPFButtonProps {
   onClick: () => void;
@@ -20,6 +21,7 @@ export function ApplySPFButton({
   isAuthenticated,
   isLoaded
 }: ApplySPFButtonProps) {
+  const { t } = useLanguage();
   const isDisabled = !isLoaded || isPending || cooldownSeconds > 0;
 
   return (
@@ -35,7 +37,8 @@ export function ApplySPFButton({
         'transition-all duration-200',
         'active:scale-[0.98]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2',
-        'disabled:opacity-70 disabled:cursor-not-allowed'
+        'disabled:opacity-70 disabled:cursor-not-allowed',
+        'flex items-center justify-center gap-2'
       )}
       aria-label={
         cooldownSeconds > 0
@@ -49,25 +52,24 @@ export function ApplySPFButton({
         <Loader2 size={24} className="animate-spin" aria-hidden="true" />
       ) : isPending ? (
         <>
-          <Loader2 size={24} className="mr-2 animate-spin" aria-hidden="true" />
-          <span>Applying…</span>
+          <Loader2 size={24} className="animate-spin" aria-hidden="true" />
+          <span>{t('applying')}</span>
         </>
       ) : !isAuthenticated ? (
         <>
-          <Lock size={20} className="mr-2" aria-hidden="true" />
-          <span>LOGIN TO APPLY</span>
+          <Lock size={20} aria-hidden="true" />
+          <span>{t('login_to_apply')}</span>
         </>
       ) : cooldownSeconds > 0 ? (
-        <span className="tabular-nums">Wait {cooldownSeconds}s</span>
+        <span className="tabular-nums">{t('wait_s').replace('{{s}}', cooldownSeconds.toString())}</span>
       ) : (
         <>
           <Plus
             size={24}
-            className="mr-2"
             strokeWidth={3}
             aria-hidden="true"
           />
-          <span>APPLY SPF</span>
+          <span>{t('apply_spf')}</span>
         </>
       )}
     </Button>

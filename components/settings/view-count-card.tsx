@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLanguage } from '@/hooks/use-language';
 
 export function ViewCountCard() {
     const [viewCount, setViewCount] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const { t } = useLanguage();
 
     useEffect(() => {
         fetch('/api/stats')
@@ -28,7 +30,7 @@ export function ViewCountCard() {
                     <Eye size={24} />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-sm font-medium text-tuval-label">Total Site Views</span>
+                    <span className="text-sm font-medium text-tuval-label">{t('site_views')}</span>
                     {isLoading ? (
                         <Skeleton className="mt-1 h-7 w-16 rounded-md" />
                     ) : (

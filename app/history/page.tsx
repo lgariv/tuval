@@ -9,9 +9,11 @@ import { useSPFData } from '@/hooks/use-spf-data';
 import { useInfiniteHistory } from '@/hooks/use-infinite-history';
 import { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '@/hooks/use-language';
 
 export default function HistoryPage() {
     const { data, isLoading: isSpfLoading } = useSPFData();
+    const { language, t } = useLanguage();
     const {
         history,
         isLoading: isHistoryLoading,
@@ -39,13 +41,13 @@ export default function HistoryPage() {
     }, [hasMore, isHistoryLoading, loadMore]);
 
     const getDayName = (dateStr: string) => {
-        return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(new Date(dateStr)).toUpperCase();
+        return new Intl.DateTimeFormat(language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' }).format(new Date(dateStr)).toUpperCase();
     };
 
     const getDateLabel = (dateStr: string) => {
         const d = new Date(dateStr);
         const today = new Date();
-        if (d.toDateString() === today.toDateString()) return 'Today';
+        if (d.toDateString() === today.toDateString()) return t('today');
         return d.getDate().toString().padStart(2, '0');
     };
 
@@ -62,7 +64,7 @@ export default function HistoryPage() {
                 {/* Section Title */}
                 <div className="flex items-center gap-3 px-6 py-6 pt-8">
                     <span className="text-2xl" role="img" aria-label="calendar">🗓️</span>
-                    <h1 className="text-2xl font-bold text-tuval-navy">Daily History</h1>
+                    <h1 className="text-2xl font-bold text-tuval-navy">{t('nav_history')}</h1>
                 </div>
 
                 {/* History List */}
@@ -83,14 +85,14 @@ export default function HistoryPage() {
                             <Loader2 className="h-6 w-6 animate-spin text-tuval-golden" />
                         )}
                         {!hasMore && history.length > 0 && (
-                            <p className="text-sm text-tuval-label opacity-40">No more history to show</p>
+                            <p className="text-sm text-tuval-label opacity-40">{t('no_more_history')}</p>
                         )}
                     </div>
 
                     {!isHistoryLoading && history.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-20 text-tuval-label">
                             <span className="text-4xl mb-4 opacity-20">🗓️</span>
-                            <p>No history yet. Start applying SPF!</p>
+                            <p>{t('no_history')}</p>
                         </div>
                     )}
                 </div>
