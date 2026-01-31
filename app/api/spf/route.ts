@@ -29,11 +29,10 @@ function calculateStreak(
 
 /**
  * Helper to fetch the singleton SPF record
- * (Note: Public pb client can still READ if rules allowed)
  */
-async function getSPFDataRecord() {
+async function getSPFDataRecord(client = pb) {
     try {
-        return await pb.collection('spf_data').getFirstListItem('', {
+        return await client.collection('spf_data').getFirstListItem('', {
             sort: 'created',
         });
     } catch (e: unknown) {
@@ -48,9 +47,10 @@ async function getSPFDataRecord() {
  */
 export async function GET() {
     try {
-        const doc = await getSPFDataRecord();
+        const adminPb = await getAdminPB();
+        const doc = await getSPFDataRecord(adminPb);
 
-        const historyDocs = await pb.collection('daily_history').getList(1, 7, {
+        const historyDocs = await adminPb.collection('daily_history').getList(1, 7, {
             sort: '-date',
         });
 
@@ -86,7 +86,7 @@ export async function POST() {
         // 2. ADMIN DB PROXY: Get authenticated admin client
         const adminPb = await getAdminPB();
 
-        let doc = await getSPFDataRecord();
+        let doc = await getSPFDataRecord(adminPb);
 
         const now = new Date().toISOString();
         const today = new Date().toISOString().split('T')[0];

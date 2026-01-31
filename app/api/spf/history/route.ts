@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { pb } from '@/lib/pocketbase';
+import { getAdminPB, pb } from '@/lib/pocketbase';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,11 +8,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: Request) {
     try {
+        const adminPb = await getAdminPB();
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1', 10);
         const perPage = parseInt(searchParams.get('perPage') || '10', 10);
 
-        const historyDocs = await pb.collection('daily_history').getList(page, perPage, {
+        const historyDocs = await adminPb.collection('daily_history').getList(page, perPage, {
             sort: '-date',
         });
 

@@ -3,7 +3,8 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const isPublicRoute = createRouteMatcher([
     "/",
     "/history(.*)",
-    "/api/spf", // We allow GET /api/spf but POST will be handled by auth check in the route or middleware
+    "/api/spf",
+    "/api/spf/history",
     "/sign-in(.*)",
     "/sign-up(.*)",
 ]);
